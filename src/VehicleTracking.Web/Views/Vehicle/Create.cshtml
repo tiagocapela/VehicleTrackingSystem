@@ -1,0 +1,74 @@
+﻿<!-- src/VehicleTracking.Web/Views/Vehicle/Create.cshtml -->
+@model VehicleTracking.Web.Models.Vehicle
+@{
+    ViewData["Title"] = "Add Vehicle";
+}
+
+<h2><i class="fas fa-plus me-2"></i>Add New Vehicle</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="DeviceId" class="form-label"></label>
+                <input asp-for="DeviceId" class="form-control" placeholder="Enter GPS device ID" />
+                <span asp-validation-for="DeviceId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="VehicleName" class="form-label"></label>
+                <input asp-for="VehicleName" class="form-control" placeholder="Enter vehicle name" />
+                <span asp-validation-for="VehicleName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="LicensePlate" class="form-label"></label>
+                <input asp-for="LicensePlate" class="form-control" placeholder="Enter license plate" />
+                <span asp-validation-for="LicensePlate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DriverName" class="form-label"></label>
+                <input asp-for="DriverName" class="form-control" placeholder="Enter driver name" />
+                <span asp-validation-for="DriverName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+
+            <div class="mb-3">
+                <input type="submit" value="Create Vehicle" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6><i class="fas fa-info-circle me-2"></i>Device Configuration</h6>
+            </div>
+            <div class="card-body">
+                <p>Configure your MV730 device with these settings:</p>
+                <ul>
+                    <li><strong>Server:</strong> your-server.com</li>
+                    <li><strong>Port:</strong> 8888</li>
+                    <li><strong>Protocol:</strong> TCP</li>
+                </ul>
+                <hr>
+                <small class="text-muted">
+                    Make sure the Device ID matches exactly with your GPS device configuration.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

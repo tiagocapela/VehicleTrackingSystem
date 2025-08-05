@@ -1,0 +1,58 @@
+# docker-compose.override.yml
+version: '3.8'
+
+services:
+  sqlserver:
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=VehicleTracking123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - vehicle-tracking-network
+
+  tcp-microservice:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=GpsTrackingDb;User ID=sa;Password=VehicleTracking123!;TrustServerCertificate=true;MultipleActiveResultSets=true
+      - TcpServer__Port=8888
+      - TcpServer__MaxConnections=1000
+      - Logging__LogLevel__Default=Information
+      - Logging__LogLevel__TcpGpsService=Debug
+    ports:
+      - "5001:80"
+      - "8888:8888"
+    depends_on:
+      - sqlserver
+    networks:
+      - vehicle-tracking-network
+    restart: unless-stopped
+
+  mvc-app:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=VehicleTrackingDb;User ID=sa;Password=VehicleTracking123!;TrustServerCertificate=true;MultipleActiveResultSets=true
+      - TcpMicroservice__BaseUrl=http://tcp-microservice
+      - Logging__LogLevel__Default=Information
+    ports:
+      - "5000:80"
+    depends_on:
+      - sqlserver
+      - tcp-microservice
+    networks:
+      - vehicle-tracking-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+    driver: local
+
+networks:
+  vehicle-tracking-network:
+    driver: bridge
+

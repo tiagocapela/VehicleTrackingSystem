@@ -1,0 +1,116 @@
+﻿<!-- src/VehicleTracking.Web/Views/Home/Index.cshtml -->
+
+@model IEnumerable<VehicleTracking.Web.Models.Vehicle>
+@using VehicleTracking.Web.Services
+@using VehicleTracking.Web.Helpers
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body text-center">
+                <i class="fas fa-car fa-2x mb-2"></i>
+                <h3 id="total-vehicles">@Model.Count()</h3>
+                <p class="mb-0">Total Vehicles</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                <h3 id="online-vehicles">0</h3>
+                <p class="mb-0">Online</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-2x mb-2"></i>
+                <h3 id="offline-vehicles">0</h3>
+                <p class="mb-0">Offline</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body text-center">
+                <i class="fas fa-route fa-2x mb-2"></i>
+                <h3 id="moving-vehicles">0</h3>
+                <p class="mb-0">Moving</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-map-marked-alt me-2"></i>Live Vehicle Locations</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="dashboard-map" style="height: 500px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list me-2"></i>Vehicle Status</h5>
+            </div>
+            <div class="card-body" id="vehicle-list">
+                @foreach (var vehicle in Model)
+                {
+                    <div class="mb-3 p-2 border rounded">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@vehicle.VehicleName</strong>
+                                <br>
+                                <small class="text-muted">@(vehicle.LicensePlate ?? "No plate")</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-secondary">Offline</span>
+                                <br>
+                                <small class="text-muted">No data</small>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Serialize vehicles data properly
+        const vehiclesData = @Html.Raw(JsonHelper.SerializeForJavaScript(Model.Select(v => v.ToDto())));
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+
+            // Process vehicles data with safe type conversion
+            if (window.vehicleTracker) {
+                window.vehicleTracker.vehicles = vehiclesData.map(vehicle => ({
+                    ...vehicle,
+                    createdAt: window.VehicleTracking.parseJsonDate(vehicle.createdAt),
+                    lastLocation: vehicle.lastLocation ? {
+                        ...vehicle.lastLocation,
+                        timestamp: window.VehicleTracking.parseJsonDate(vehicle.lastLocation.timestamp),
+                        speed: window.VehicleTracking.safeNumber(vehicle.lastLocation.speed),
+                        course: window.VehicleTracking.safeNumber(vehicle.lastLocation.course),
+                        satellites: window.VehicleTracking.safeNumber(vehicle.lastLocation.satellites, 0)
+                    } : null
+                }));
+
+                window.vehicleTracker.updateDashboard();
+                window.vehicleTracker.updateVehicleList();
+                window.vehicleTracker.updateMapMarkers();
+            }
+        });
+    </script>
+}
