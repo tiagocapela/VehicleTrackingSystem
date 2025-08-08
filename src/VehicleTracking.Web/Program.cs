@@ -7,6 +7,7 @@ using System.Text.Json;
 using VehicleTracking.Web.Models;
 using VehicleTracking.Web.Services;
 using VehicleTracking.Web.Hubs;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
