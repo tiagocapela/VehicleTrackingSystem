@@ -251,7 +251,7 @@ class VehicleHistoryManager {
         if (!this.historyMap || this.locations.length === 0) return;
 
         const bounds = L.latLngBounds(
-            this.locations.$values.map(loc => [loc.latitude, loc.longitude])
+            this.locations.map(loc => [loc.latitude, loc.longitude])
         );
 
         this.historyMap.fitBounds(bounds, { padding: [20, 20] });
