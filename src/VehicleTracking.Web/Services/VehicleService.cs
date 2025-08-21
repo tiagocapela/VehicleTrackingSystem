@@ -1,5 +1,5 @@
 ﻿// ================================================================================================
-// src/VehicleTracking.Web/Services/VehicleService.cs
+// src/VehicleTracking.Web/Services/VehicleService.cs - Fixed Version
 // ================================================================================================
 using Microsoft.EntityFrameworkCore;
 using System.Text;
@@ -88,46 +88,49 @@ namespace VehicleTracking.Web.Services
             await _context.SaveChangesAsync();
         }
 
-        // History-related implementations
+        // History-related implementations with improved calculations
         public async Task<HistoryStatistics> GetVehicleHistoryStatisticsAsync(int vehicleId, DateTime from, DateTime to)
         {
             var locations = await GetVehicleLocationsAsync(vehicleId, from, to);
-            
+
             if (!locations.Any())
             {
                 return new HistoryStatistics();
             }
 
+            // Sort locations by timestamp to ensure proper order
+            var orderedLocations = locations.OrderBy(l => l.Timestamp).ToList();
+
             var statistics = new HistoryStatistics
             {
-                TotalPoints = locations.Count,
-                TotalDistance = CalculateTotalDistance(locations),
-                SpeedData = locations.Select(l => new SpeedDataPoint 
-                { 
-                    Timestamp = l.Timestamp, 
-                    Speed = l.Speed ?? 0 
-                }).ToList(),
-                Stops = await GetVehicleStopsAsync(vehicleId, from, to)
+                TotalPoints = orderedLocations.Count,
+                TotalDistance = CalculateTotalDistance(orderedLocations),
+                SpeedData = orderedLocations.Select(l => new SpeedDataPoint
+                {
+                    Timestamp = l.Timestamp,
+                    Speed = l.Speed ?? 0
+                }).ToList()
             };
 
-            var speedValues = locations.Where(l => l.Speed.HasValue && l.Speed > 0).Select(l => l.Speed.Value);
-            if (speedValues.Any())
+            // Calculate speed statistics
+            var validSpeeds = orderedLocations
+                .Where(l => l.Speed.HasValue && l.Speed.Value >= 0)
+                .Select(l => l.Speed!.Value)
+                .ToList();
+
+            if (validSpeeds.Any())
             {
-                statistics.AverageSpeed = speedValues.Average();
-                statistics.MaxSpeed = speedValues.Max();
+                statistics.AverageSpeed = validSpeeds.Average();
+                statistics.MaxSpeed = validSpeeds.Max();
             }
 
-            var movingLocations = locations.Where(l => l.Speed > 5).ToList();
-            if (movingLocations.Count > 1)
-            {
-                statistics.MovingTime = (movingLocations.Max(l => l.Timestamp) - movingLocations.Min(l => l.Timestamp)).TotalMinutes;
-            }
+            // Calculate time-based statistics
+            var timeStats = CalculateTimeStatistics(orderedLocations);
+            statistics.MovingTime = timeStats.MovingTime;
+            statistics.StoppedTime = timeStats.StoppedTime;
 
-            if (locations.Count > 1)
-            {
-                var totalTime = (locations.Max(l => l.Timestamp) - locations.Min(l => l.Timestamp)).TotalMinutes;
-                statistics.StoppedTime = totalTime - statistics.MovingTime;
-            }
+            // Get stops
+            statistics.Stops = await GetVehicleStopsAsync(vehicleId, from, to);
 
             return statistics;
         }
@@ -135,14 +138,15 @@ namespace VehicleTracking.Web.Services
         public async Task<List<StopPoint>> GetVehicleStopsAsync(int vehicleId, DateTime from, DateTime to, int minStopDuration = 5)
         {
             var locations = await GetVehicleLocationsAsync(vehicleId, from, to);
+            var orderedLocations = locations.OrderBy(l => l.Timestamp).ToList();
             var stops = new List<StopPoint>();
-            
+
             StopPoint? currentStop = null;
-            
-            foreach (var location in locations.OrderBy(l => l.Timestamp))
+
+            foreach (var location in orderedLocations)
             {
                 var speed = location.Speed ?? 0;
-                
+
                 if (speed < 5) // Consider as stopped if speed < 5 km/h
                 {
                     if (currentStop == null)
@@ -154,24 +158,35 @@ namespace VehicleTracking.Web.Services
                             StartTime = location.Timestamp
                         };
                     }
+                    // Update end time for current stop
+                    currentStop.EndTime = location.Timestamp;
                 }
                 else
                 {
                     if (currentStop != null)
                     {
-                        currentStop.EndTime = location.Timestamp;
                         currentStop.Duration = (currentStop.EndTime - currentStop.StartTime).TotalMinutes;
-                        
+
                         if (currentStop.Duration >= minStopDuration)
                         {
                             stops.Add(currentStop);
                         }
-                        
+
                         currentStop = null;
                     }
                 }
             }
-            
+
+            // Handle case where journey ends with a stop
+            if (currentStop != null)
+            {
+                currentStop.Duration = (currentStop.EndTime - currentStop.StartTime).TotalMinutes;
+                if (currentStop.Duration >= minStopDuration)
+                {
+                    stops.Add(currentStop);
+                }
+            }
+
             return stops;
         }
 
@@ -182,29 +197,29 @@ namespace VehicleTracking.Web.Services
                 throw new ArgumentException($"Vehicle with ID {vehicleId} not found");
 
             var locations = await GetVehicleLocationsAsync(vehicleId, from, to);
-            
+
             if (format.ToLower() == "csv")
             {
                 return GenerateLocationsCsvBytes(locations, vehicle);
             }
-            
+
             throw new NotSupportedException($"Export format '{format}' is not supported");
         }
 
         private byte[] GenerateLocationsCsvBytes(List<GpsLocation> locations, Vehicle vehicle)
         {
             var csv = new StringBuilder();
-            
+
             // Header
             csv.AppendLine("Vehicle Name,Device ID,Timestamp,Latitude,Longitude,Speed (km/h),Course,Satellites");
-            
+
             // Data rows
             foreach (var location in locations.OrderBy(l => l.Timestamp))
             {
                 csv.AppendLine($"\"{vehicle.VehicleName}\",\"{vehicle.DeviceId}\",\"{location.Timestamp:yyyy-MM-dd HH:mm:ss}\"," +
-                              $"{location.Latitude},{location.Longitude},{location.Speed ?? 0},{location.Course ?? 0},{location.Satellites}");
+                              $"{location.Latitude:F6},{location.Longitude:F6},{location.Speed ?? 0:F1},{location.Course ?? 0:F1},{location.Satellites}");
             }
-            
+
             return Encoding.UTF8.GetBytes(csv.ToString());
         }
 
@@ -213,31 +228,86 @@ namespace VehicleTracking.Web.Services
             if (locations.Count < 2) return 0;
 
             double totalDistance = 0;
-            var orderedLocations = locations.OrderBy(l => l.Timestamp).ToList();
-            
-            for (int i = 1; i < orderedLocations.Count; i++)
+
+            for (int i = 1; i < locations.Count; i++)
             {
-                var prev = orderedLocations[i - 1];
-                var curr = orderedLocations[i];
-                totalDistance += CalculateDistanceBetweenPoints(prev.Latitude, prev.Longitude, curr.Latitude, curr.Longitude);
+                var prev = locations[i - 1];
+                var curr = locations[i];
+
+                // Only calculate distance if both points are valid
+                if (IsValidCoordinate(prev.Latitude, prev.Longitude) &&
+                    IsValidCoordinate(curr.Latitude, curr.Longitude))
+                {
+                    var distance = CalculateDistanceBetweenPoints(
+                        prev.Latitude, prev.Longitude,
+                        curr.Latitude, curr.Longitude);
+
+                    // Filter out unrealistic jumps (more than 10km between consecutive points)
+                    if (distance <= 10.0)
+                    {
+                        totalDistance += distance;
+                    }
+                }
             }
-            
+
             return totalDistance;
+        }
+
+        private bool IsValidCoordinate(double latitude, double longitude)
+        {
+            return latitude >= -90 && latitude <= 90 &&
+                   longitude >= -180 && longitude <= 180 &&
+                   !(latitude == 0 && longitude == 0); // Exclude invalid GPS fix
+        }
+
+        private (double MovingTime, double StoppedTime) CalculateTimeStatistics(List<GpsLocation> locations)
+        {
+            if (locations.Count < 2)
+                return (0, 0);
+
+            double movingTime = 0;
+            double totalTime = 0;
+
+            for (int i = 1; i < locations.Count; i++)
+            {
+                var prev = locations[i - 1];
+                var curr = locations[i];
+
+                var timeDiff = (curr.Timestamp - prev.Timestamp).TotalMinutes;
+
+                // Only consider reasonable time differences (less than 1 hour)
+                if (timeDiff > 0 && timeDiff <= 60)
+                {
+                    totalTime += timeDiff;
+
+                    // Consider as moving if either point has speed > 5 km/h
+                    var prevSpeed = prev.Speed ?? 0;
+                    var currSpeed = curr.Speed ?? 0;
+
+                    if (prevSpeed > 5 || currSpeed > 5)
+                    {
+                        movingTime += timeDiff;
+                    }
+                }
+            }
+
+            var stoppedTime = totalTime - movingTime;
+            return (movingTime, Math.Max(0, stoppedTime));
         }
 
         private double CalculateDistanceBetweenPoints(double lat1, double lon1, double lat2, double lon2)
         {
             const double earthRadius = 6371; // km
-            
+
             var dLat = DegreesToRadians(lat2 - lat1);
             var dLon = DegreesToRadians(lon2 - lon1);
-            
+
             var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
                     Math.Cos(DegreesToRadians(lat1)) * Math.Cos(DegreesToRadians(lat2)) *
                     Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-            
+
             var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-            
+
             return earthRadius * c;
         }
 

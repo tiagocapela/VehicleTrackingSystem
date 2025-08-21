@@ -54,12 +54,16 @@
         </div>
     </footer>
 
+    <!-- Core JavaScript Libraries -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
+
+    <!-- Vehicle Tracking Scripts -->
     <script src="~/js/vehicle-tracking.js" asp-append-version="true"></script>
+    <script src="~/js/vehicle-history.js" asp-append-version="true"></script>
 
     <!-- Global JavaScript configuration -->
     <script>
@@ -91,84 +95,34 @@
             }
             return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleString();
         };
+
+        // Error handling for script loading
+        window.addEventListener('error', function(e) {
+            if (e.filename && (e.filename.includes('vehicle-tracking.js') || e.filename.includes('vehicle-history.js'))) {
+                console.error('Failed to load vehicle tracking script:', e.filename);
+
+                // Show user-friendly error
+                setTimeout(function() {
+                    if (document.querySelector('.alert-danger') === null) {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show m-3';
+                        alertDiv.innerHTML = `
+                            <strong>Script Loading Error:</strong> Some features may not work properly. Please refresh the page.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        `;
+                        document.querySelector('main').prepend(alertDiv);
+                    }
+                }, 1000);
+            }
+        });
+
+        // Debug mode (can be enabled for troubleshooting)
+        if (localStorage.getItem('vehicleTracking.debug') === 'true') {
+            window.VehicleTracking.debug = true;
+            console.log('Vehicle Tracking Debug Mode Enabled');
+        }
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
-
-
-@* 
-    
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Vehicle Tracking System</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/VehicleTracking.styles.css" asp-append-version="true" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-</head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-primary border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
-                    <i class="fas fa-map-marked-alt me-2"></i>Vehicle Tracking
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
-                                <i class="fas fa-home me-1"></i>Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Vehicle" asp-action="Index">
-                                <i class="fas fa-car me-1"></i>Vehicles
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Map">
-                                <i class="fas fa-map me-1"></i>Live Map
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container-fluid">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2024 - Vehicle Tracking System - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
-
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.0/signalr.min.js"></script>
-    <script src="~/js/vehicle-tracking.js" asp-append-version="true"></script>
-    <script src="~/js/vehicle-history.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-</body>
-</html> *@
-
-
-
-

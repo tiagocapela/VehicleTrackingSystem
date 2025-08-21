@@ -8,7 +8,6 @@
     var locations = ViewBag.Locations as List<VehicleTracking.Web.Models.GpsLocation> ?? new List<VehicleTracking.Web.Models.GpsLocation>();
 }
 
-
 <div class="row mb-3">
     <div class="col-md-12">
         <div class="d-flex justify-content-between align-items-center">
@@ -206,7 +205,10 @@
                         {
                             <div class="location-item p-2 border-bottom cursor-pointer"
                                  onclick="highlightLocation(@location.Id, @location.Latitude, @location.Longitude)"
-                                 data-lat="@location.Latitude" data-lng="@location.Longitude" data-speed="@location.Speed"
+                                 data-location-id="@location.Id"
+                                 data-lat="@location.Latitude"
+                                 data-lng="@location.Longitude"
+                                 data-speed="@(location.Speed ?? 0)"
                                  data-time="@location.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss")">
                                 <div class="d-flex justify-content-between">
                                     <div>
@@ -216,7 +218,7 @@
                                     </div>
                                     <div class="text-end">
                                         <span class="badge @(location.Speed > 0 ? "bg-success" : "bg-secondary")">
-                                            @(location.Speed?.ToString("F0") ?? "0") km/h
+                                            @((location.Speed ?? 0).ToString("F0")) km/h
                                         </span>
                                         <br>
                                         <small class="text-muted">@location.Satellites sats</small>
@@ -243,89 +245,53 @@
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="~/js/vehicle-history.js" asp-append-version="true"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/2.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script>
+        // Define global variables for JavaScript access
         const vehicleId = @Model.Id;
 
-        // Use JsonHelper for consistent serialization
+        // Process locations data safely with proper error handling
         const locationsData = @Html.Raw(JsonHelper.SerializeForJavaScript(locations.Select(l => l.ToDto())));
         const vehicleData = @Html.Raw(JsonHelper.SerializeForJavaScript(Model.ToDto()));
 
+        // Debug logging
+        console.log('Vehicle ID:', vehicleId);
+        console.log('Locations Data:', locationsData);
+        console.log('Vehicle Data:', vehicleData);
+
+        // Initialize when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
-            initializeHistoryPage();
+            console.log('DOM loaded, initializing history page...');
+
+            // Ensure the vehicle-history.js is loaded before initializing
+            if (typeof initializeHistoryPage === 'function') {
+                initializeHistoryPage();
+            } else {
+                console.error('initializeHistoryPage function not found. Make sure vehicle-history.js is loaded.');
+
+                // Fallback: try to load after a short delay
+                setTimeout(function() {
+                    if (typeof initializeHistoryPage === 'function') {
+                        initializeHistoryPage();
+                    } else {
+                        alert('Error: History page scripts failed to load. Please refresh the page.');
+                    }
+                }, 1000);
+            }
         });
 
-        function initializeHistoryPage() {
-            if (window.historyManager) {
-                window.historyManager.initialize(locationsData);
+        // Helper functions for onclick handlers in the location list
+        function highlightLocationWrapper(locationId, lat, lng) {
+            console.log('Highlighting location:', locationId, lat, lng);
+
+            if (typeof highlightLocation === 'function') {
+                highlightLocation(locationId, lat, lng);
+            } else {
+                console.error('highlightLocation function not available');
             }
         }
 
-        function highlightLocation(locationId, lat, lng) {
-            if (window.historyManager) {
-                const location = locationsData.find(l => l.id === locationId);
-                if (location) {
-                    window.historyManager.highlightLocation(locationId, lat, lng,
-                        window.VehicleTracking.safeNumber(location.speed), location.timestamp);
-                }
-            }
-        }
-
-        function fitMapToRoute() {
-            if (window.historyManager) {
-                window.historyManager.fitMapToRoute();
-            }
-        }
-
-        function toggleAnimation() {
-            if (window.historyManager) {
-                window.historyManager.toggleAnimation();
-            }
-        }
-
-        function clearMap() {
-            if (window.historyManager) {
-                window.historyManager.clearMap();
-            }
-        }
-
-        function setQuickRange(range) {
-            const now = new Date();
-            let from, to = now;
-
-            switch (range) {
-                case 'today':
-                    from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    break;
-                case 'yesterday':
-                    from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-                    to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    break;
-                case 'week':
-                    from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    break;
-                case 'month':
-                    from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                    break;
-                default:
-                    return;
-            }
-
-            // Update form inputs
-            document.getElementById('fromDate').value = from.toISOString().slice(0, 16);
-            document.getElementById('toDate').value = to.toISOString().slice(0, 16);
-
-            // Submit form
-            document.getElementById('historyFilterForm').submit();
-        }
-
-        function exportHistory() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const from = urlParams.get('from') || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            const to = urlParams.get('to') || new Date().toISOString();
-
-            const exportUrl = `/Vehicle/ExportHistory/${vehicleId}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=csv`;
-            window.open(exportUrl, '_blank');
-        }
+        // Override the onclick function name to use our wrapper
+        window.highlightLocation = highlightLocationWrapper;
     </script>
 }
