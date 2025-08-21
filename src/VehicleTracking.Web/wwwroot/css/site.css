@@ -201,3 +201,46 @@ body {
         font-size: 0.75rem;
     }
 }
+
+
+
+
+
+
+/* Add some styling for the quick range buttons */
+.btn-outline-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-outline-info:active {
+    transform: translateY(0);
+}
+
+.gap-2 {
+    gap: 0.5rem !important;
+}
+
+/* Loading state for buttons */
+.btn:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .d-flex.flex-wrap.gap-2 {
+        flex-direction: column;
+    }
+
+        .d-flex.flex-wrap.gap-2 .btn {
+            margin-bottom: 0.25rem;
+        }
+
+    .ms-auto {
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+    }
+}
+
+
