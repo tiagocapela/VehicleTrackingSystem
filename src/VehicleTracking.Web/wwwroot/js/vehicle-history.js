@@ -394,11 +394,13 @@ class VehicleHistoryManager {
             return;
         }
 
-        // Prepare chart data
-        const chartData = this.locations.map(location => ({
-            x: location.timestamp,
-            y: location.speed || 0
-        }));
+        // Prepare chart data - ensure timestamps are Date objects and data is sorted
+        const chartData = this.locations
+            .map(location => ({
+                x: new Date(location.timestamp),
+                y: location.speed || 0
+            }))
+            .sort((a, b) => a.x - b.x); // Sort by timestamp to ensure proper order
 
         this.speedChart = new Chart(ctx, {
             type: 'line',
@@ -420,7 +422,22 @@ class VehicleHistoryManager {
                 maintainAspectRatio: false,
                 scales: {
                     x: {
-                        title: { display: true, text: 'Time' }                        
+                        type: 'time',
+                        time: {
+                            displayFormats: {
+                                minute: 'HH:mm',
+                                hour: 'HH:mm',
+                                day: 'MMM DD'
+                            },
+                            tooltipFormat: 'MMM DD, YYYY HH:mm:ss'
+                        },
+                        title: { 
+                            display: true, 
+                            text: 'Time' 
+                        },
+                        ticks: {
+                            maxTicksLimit: 10
+                        }
                     },
                     y: {
                         beginAtZero: true,
@@ -433,6 +450,21 @@ class VehicleHistoryManager {
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                if (tooltipItems.length > 0) {
+                                    return new Date(tooltipItems[0].parsed.x).toLocaleString();
+                                }
+                                return '';
+                            },
+                            label: function(tooltipItem) {
+                                return `Speed: ${tooltipItem.parsed.y} km/h`;
+                            }
+                        }
                     }
                 },
                 interaction: {
