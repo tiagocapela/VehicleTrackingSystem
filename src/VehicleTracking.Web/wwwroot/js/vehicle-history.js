@@ -427,9 +427,9 @@ class VehicleHistoryManager {
                             displayFormats: {
                                 minute: 'HH:mm',
                                 hour: 'HH:mm',
-                                day: 'MMM DD'
+                                day: 'MMM dd'
                             },
-                            tooltipFormat: 'MMM DD, YYYY HH:mm:ss'
+                            tooltipFormat: 'MMM dd, yyyy HH:mm:ss'
                         },
                         title: { 
                             display: true, 

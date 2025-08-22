@@ -1,4 +1,5 @@
 ﻿@model VehicleTracking.Web.Models.Vehicle
+@using System.Globalization
 @using VehicleTracking.Web.Services
 @using VehicleTracking.Web.Helpers
 @{
@@ -232,7 +233,7 @@
                         @foreach (var location in locations.OrderByDescending(l => l.Timestamp))
                         {
                             <div class="location-item p-2 border-bottom cursor-pointer"
-                                 onclick="highlightLocation(@location.Id, @location.Latitude, @location.Longitude)"
+                                 onclick="highlightLocation(@location.Id, @location.Latitude.ToString("F6", CultureInfo.InvariantCulture), @location.Longitude.ToString("F6", CultureInfo.InvariantCulture))"
                                  data-location-id="@location.Id"
                                  data-lat="@location.Latitude"
                                  data-lng="@location.Longitude"
@@ -274,7 +275,7 @@
 @section Scripts {
     <!-- Chart.js with date adapter (optional - only if you want charts) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/2.0.0/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <script>
         // Define global variables for JavaScript access
